@@ -1,0 +1,36 @@
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor / IDE
+.vscode/
+.sixth
+.idea/
+*.swp
+*.swo
+*~
+
+# Logs
+*.log
+
+# Docker
+*.pid
+*.cid
+
+# Env files (if you add later)
+.env
+
+# Temporary files
+tmp/
+temp/
+*.tmp
+
+# Build / cache
+.cache/
+
+# Node (if you ever extend frontend)
+node_modules/
+
+# Python (if scripts added later)
+__pycache__/
+*.pyc
