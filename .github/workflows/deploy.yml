@@ -1,0 +1,27 @@
+name: Deploy from Docker Hub
+
+on:
+  push:
+    tags:
+      - "v*"
+
+jobs:
+  deploy:
+    runs-on: self-hosted
+
+    steps:
+      - name: Pull latest image
+        run: |
+          docker pull sanjeevtripurari/nginx-rotate-app:${{ github.ref_name }}
+
+      - name: Stop old container (if exists)
+        run: |
+          docker stop nginx-rotate || true
+          docker rm nginx-rotate || true
+
+      - name: Run new container
+        run: |
+          docker run -d \
+            --name nginx-rotate \
+            -p 80:80 \
+            sanjeevtripurari/nginx-rotate-app:${{ github.ref_name }}
