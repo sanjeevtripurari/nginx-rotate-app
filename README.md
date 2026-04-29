@@ -15,17 +15,19 @@ It is a great hands-on project to understand:
 * NGINX static hosting
 * Shell scripting automation
 * Dynamic content injection in static pages
+* Basic CI/CD deployment using GitHub Actions
 
 ---
 
 ## 🏗️ Project Structure
 
-```
+```id="jz4qz2"
 nginx-rotate-app/
 │
 ├── Dockerfile
 ├── docker-compose.yml
 ├── start.sh
+├── image-release.txt
 │
 └── webpages/
     ├── index1.html
@@ -46,17 +48,11 @@ nginx-rotate-app/
 
 2. A background script (`rotate_pages.sh`) runs inside the container:
 
-   * Selects one HTML page at a time
-   * Injects a quote using `fortune`
-   * Updates `index.html` dynamically
+   * Rotates between pages
+   * Injects quotes using `fortune`
+   * Dynamically updates `index.html`
 
-3. NGINX always serves:
-
-   ```
-   index.html
-   ```
-
-4. Each HTML page refreshes automatically every 5 seconds:
+3. Each page refreshes automatically:
 
    ```html
    <meta http-equiv="refresh" content="5">
@@ -64,121 +60,208 @@ nginx-rotate-app/
 
 ---
 
-## 🐳 Docker Setup
+## 🐳 Run Locally
 
-### Dockerfile
-
-* Uses `nginx:latest`
-* Installs:
-
-  * `fortune`
-  * `fortunes`
-* Copies HTML pages and scripts
-* Starts NGINX + rotation script
-
----
-
-## ▶️ Run the Application
-
-### 1. Build and start container
-
-```bash
+```bash id="3w4kha"
 docker-compose up --build
 ```
 
-### 2. Access in browser
+Access:
 
-```
+```id="0l5vdg"
 http://localhost
 ```
 
 ---
 
-## 🔁 Page Rotation Logic
-
-The script:
-
-```bash
-webpages/rotate_pages.sh
-```
-
-* Cycles through:
-
-  * `index1.html`
-  * `index2.html`
-  * `index3.html`
-* Injects a new quote every cycle
-* Runs for a defined duration
-
----
-
 ## 💬 Quote Injection
 
-Quotes are generated using:
-
-```bash
+```bash id="0b33mt"
 /usr/games/fortune -s
 ```
 
-They are inserted into HTML using:
+Placeholder used in HTML:
 
-```html
+```html id="szk6y2"
 {{QUOTE}}
 ```
 
-The script replaces this placeholder dynamically.
+---
+
+# 🚀 Deployment (Standard CI/CD)
+
+This project uses a **simple production-style deployment**:
+
+* Docker image hosted on Docker Hub
+* Version controlled via `image-release.txt`
+* Deployment handled by GitHub Actions
+* Application runs on EC2 (or any VM)
+
+---
+
+## 📄 image-release.txt
+
+Controls which version is deployed:
+
+```id="b3c9px"
+sanjeevtripurari/nginx-rotate-app:v1
+```
+
+---
+
+## 🔐 GitHub Secrets (Required)
+
+Go to:
+
+```id="n7y2k8"
+Repo → Settings → Secrets → Actions
+```
+
+Add the following:
+
+### 1. EC2_HOST
+
+Public IP or DNS of your EC2 instance
+
+```id="6e7y3m"
+13.xxx.xxx.xxx
+```
+
+---
+
+### 2. EC2_USER
+
+Depends on your instance type:
+
+| OS           | Value    |
+| ------------ | -------- |
+| Ubuntu       | ubuntu   |
+| Amazon Linux | ec2-user |
+
+---
+
+### 3. EC2_SSH_KEY
+
+Paste your private key content:
+
+```id="q1qkpn"
+-----BEGIN RSA PRIVATE KEY-----
+xxxxx
+-----END RSA PRIVATE KEY-----
+```
+
+⚠️ Do NOT paste file path
+
+---
+
+## ⚙️ GitHub Actions Workflow
+
+Location:
+
+```id="p9q6oe"
+.github/workflows/deploy.yml
+```
+
+---
+
+## 🚀 How to Release a New Version
+
+### Step 1 — Build & push Docker image
+
+```bash id="04ow2d"
+docker build -t nginx-rotate-app .
+docker tag nginx-rotate-app sanjeevtripurari/nginx-rotate-app:v2
+docker push sanjeevtripurari/nginx-rotate-app:v2
+```
+
+---
+
+### Step 2 — Update release file
+
+```bash id="g5c1pz"
+echo "sanjeevtripurari/nginx-rotate-app:v2" > image-release.txt
+
+git add image-release.txt
+git commit -m "release v2"
+git push
+```
+
+---
+
+### ✅ Result
+
+* GitHub Actions triggers automatically
+* Connects to EC2
+* Pulls latest image
+* Restarts container
+
+---
+
+## 🔄 Rollback
+
+```bash id="o8w4y5"
+echo "sanjeevtripurari/nginx-rotate-app:v1" > image-release.txt
+git commit -am "rollback"
+git push
+```
 
 ---
 
 ## ⚠️ Important Notes
 
-### 1. Fortune Path
+### Docker must be installed on EC2
 
-On Debian-based images:
-
+```bash id="p9i4z9"
+docker ps
 ```
-/usr/games/fortune
-```
-
-Ensure your script uses the full path.
 
 ---
 
-### 2. UTF-8 Support
+### Allow Docker without sudo
 
-Make sure each HTML file includes:
+```bash id="t62e1m"
+sudo usermod -aG docker ubuntu
+```
 
-```html
+---
+
+### Open required ports
+
+AWS Security Group:
+
+```id="f3nrbj"
+Port 22 → SSH
+Port 80 → HTTP
+```
+
+---
+
+### UTF-8 support
+
+```html id="e2o9vh"
 <meta charset="UTF-8">
 ```
 
 ---
 
-### 3. Safe Quote Handling
+## 🧪 Debugging
 
-The project uses `awk` to safely inject quotes without breaking HTML.
+```bash id="yyqfxa"
+docker logs nginx-rotate
+docker ps
+```
 
 ---
 
-## 🧪 Debugging Tips
+## 🎯 Key Benefits
 
-### Check container logs
+* No Git tag complexity
+* Simple release mechanism
+* Easy rollback
+* Fully automated deployment
+* Works with any VM
 
-```bash
-docker logs nginx-rotate
-```
-
-### Access container shell
-
-```bash
-docker exec -it nginx-rotate bash
-```
-
-### Test fortune manually
-
-```bash
-/usr/games/fortune
-```
+---
 
 ## 👤 Author
 

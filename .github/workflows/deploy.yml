@@ -8,7 +8,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout repo
@@ -18,35 +18,28 @@ jobs:
         id: image
         run: |
           IMAGE=$(cat image-release.txt | tr -d '[:space:]')
-          echo "IMAGE=$IMAGE"
           echo "image=$IMAGE" >> $GITHUB_OUTPUT
 
-      - name: Debug
-        run: |
-          echo "Deploying image: ${{ steps.image.outputs.image }}"
-          whoami
-          groups
-          docker --version
+      - name: Deploy via SSH
+        uses: appleboy/ssh-action@v1.0.3
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ${{ secrets.EC2_USER }}
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            IMAGE="${{ steps.image.outputs.image }}"
 
-      - name: Pull Docker image (with retry)
-        run: |
-          IMAGE="${{ steps.image.outputs.image }}"
-          echo "Pulling $IMAGE"
+            echo "Deploying $IMAGE"
 
-          for i in {1..5}; do
-            docker pull $IMAGE && break
-            echo "Retry $i..."
-            sleep 5
-          done
+            # pull image
+            docker pull $IMAGE
 
-      - name: Stop old container
-        run: |
-          docker stop nginx-rotate || true
-          docker rm nginx-rotate || true
+            # stop old container
+            docker stop nginx-rotate || true
+            docker rm nginx-rotate || true
 
-      - name: Run new container
-        run: |
-          docker run -d \
-            --name nginx-rotate \
-            -p 80:80 \
-            "${{ steps.image.outputs.image }}"
+            # run new container
+            docker run -d \
+              --name nginx-rotate \
+              -p 80:80 \
+              $IMAGE
