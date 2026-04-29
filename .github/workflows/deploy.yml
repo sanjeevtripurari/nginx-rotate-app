@@ -1,20 +1,45 @@
-name: Deploy from Docker Hub
+name: Deploy using image-release file
 
 on:
   push:
-    tags:
-      - "v*"
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: self-hosted
 
     steps:
-      - name: Pull latest image
-        run: |
-          docker pull sanjeevtripurari/nginx-rotate-app:${{ github.ref_name }}
+      - name: Checkout repo
+        uses: actions/checkout@v3
 
-      - name: Stop old container (if exists)
+      - name: Read image name
+        id: image
+        run: |
+          IMAGE=$(cat image-release.txt | tr -d '[:space:]')
+          echo "IMAGE=$IMAGE"
+          echo "image=$IMAGE" >> $GITHUB_OUTPUT
+
+      - name: Debug
+        run: |
+          echo "Deploying image: ${{ steps.image.outputs.image }}"
+          whoami
+          groups
+          docker --version
+
+      - name: Pull Docker image (with retry)
+        run: |
+          IMAGE="${{ steps.image.outputs.image }}"
+          echo "Pulling $IMAGE"
+
+          for i in {1..5}; do
+            docker pull $IMAGE && break
+            echo "Retry $i..."
+            sleep 5
+          done
+
+      - name: Stop old container
         run: |
           docker stop nginx-rotate || true
           docker rm nginx-rotate || true
@@ -24,4 +49,4 @@ jobs:
           docker run -d \
             --name nginx-rotate \
             -p 80:80 \
-            sanjeevtripurari/nginx-rotate-app:${{ github.ref_name }}
+            "${{ steps.image.outputs.image }}"
