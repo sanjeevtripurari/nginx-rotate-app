@@ -1,0 +1,1 @@
+sanjeevtripurari/nginx-rotate-app:v3
